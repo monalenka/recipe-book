@@ -2,6 +2,7 @@ const { Dish, DishImage, DishProduct, Product, sequelize } = require('../models'
 const { Op } = require('sequelize');
 const { calculateDishNutrition, checkDishFlagsAvailability, processMacroInName } = require('../utils/calculations');
 
+
 const getProductsWithDetails = async (productsData) => {
     const productIds = productsData.map(p => p.product_id);
     const products = await Product.findAll({
@@ -41,9 +42,9 @@ const validateFlags = (requestedFlags, availableFlags) => {
     );
 };
 
-const validateBZUper100g = (proteins, fats, carbs, servingSize) => {
+const validateBZUper100g = (proteinsPerServing, fatsPerServing, carbsPerServing, servingSize) => {
     if (!servingSize || servingSize <= 0) return;
-    const totalPer100g = ((proteins + fats + carbs) / servingSize) * 100;
+    const totalPer100g = ((proteinsPerServing + fatsPerServing + carbsPerServing) / servingSize) * 100;
     if (totalPer100g > 100) {
         throw new Error('Сумма белков, жиров и углеводов в пересчёте на 100 г не может превышать 100');
     }
@@ -111,10 +112,14 @@ exports.createDish = async (dishData, images) => {
     const transaction = await sequelize.transaction();
 
     try {
-        const { products: productsData, name, category: formCategory, flags: requestedFlags, ...restData } = dishData;
+        const { products: productsData, name, category: formCategory, flags: requestedFlags, serving_size, ...restData } = dishData;
 
         if (!productsData || productsData.length === 0) {
             throw new Error('Dish must have at least one product');
+        }
+
+        if (!serving_size || serving_size <= 0) {
+            throw new Error('Serving size must be positive');
         }
 
         const processedName = processMacroInName(name, formCategory);
@@ -125,20 +130,33 @@ exports.createDish = async (dishData, images) => {
         }
 
         const productsWithDetails = await getProductsWithDetails(productsData);
-        const calculatedNutrition = calculateDishNutrition(productsWithDetails);
+        const nutrition = calculateDishNutrition(productsWithDetails);
+
+        if (nutrition.totalWeight === 0) {
+            throw new Error('Total weight of products cannot be zero');
+        }
+
+        const ratio = serving_size / nutrition.totalWeight;
+
+        const calculatedCalories = nutrition.totalCalories * ratio;
+        const calculatedProteins = nutrition.totalProteins * ratio;
+        const calculatedFats = nutrition.totalFats * ratio;
+        const calculatedCarbohydrates = nutrition.totalCarbohydrates * ratio;
+
         const availableFlags = calculateAvailableFlags(productsWithDetails);
         const finalFlags = validateFlags(requestedFlags || [], availableFlags);
 
-        let finalCalories = restData.calories !== undefined ? restData.calories : calculatedNutrition.calories;
-        let finalProteins = restData.proteins !== undefined ? restData.proteins : calculatedNutrition.proteins;
-        let finalFats = restData.fats !== undefined ? restData.fats : calculatedNutrition.fats;
-        let finalCarbohydrates = restData.carbohydrates !== undefined ? restData.carbohydrates : calculatedNutrition.carbohydrates;
+        let finalCalories = restData.calories !== undefined ? restData.calories : calculatedCalories;
+        let finalProteins = restData.proteins !== undefined ? restData.proteins : calculatedProteins;
+        let finalFats = restData.fats !== undefined ? restData.fats : calculatedFats;
+        let finalCarbohydrates = restData.carbohydrates !== undefined ? restData.carbohydrates : calculatedCarbohydrates;
 
-        validateBZUper100g(finalProteins, finalFats, finalCarbohydrates, restData.serving_size);
+        validateBZUper100g(finalProteins, finalFats, finalCarbohydrates, serving_size);
 
         const dish = await Dish.create(
             {
                 ...restData,
+                serving_size,
                 name: processedName.name,
                 category: finalCategory,
                 calories: finalCalories,
@@ -184,10 +202,11 @@ exports.updateDish = async (id, dishData, images) => {
             throw new Error('Dish not found');
         }
 
-        const { products: productsData, name, category: formCategory, flags: requestedFlags, ...restData } = dishData;
+        const { products: productsData, name, category: formCategory, flags: requestedFlags, serving_size, ...restData } = dishData;
 
         let finalFlags = dish.flags;
         let calculatedNutrition = null;
+        let newServingSize = serving_size !== undefined ? serving_size : dish.serving_size;
 
         if (productsData !== undefined) {
             if (productsData.length === 0) {
@@ -195,7 +214,9 @@ exports.updateDish = async (id, dishData, images) => {
             }
 
             const productsWithDetails = await getProductsWithDetails(productsData);
-            calculatedNutrition = calculateDishNutrition(productsWithDetails);
+            const nutrition = calculateDishNutrition(productsWithDetails);
+            calculatedNutrition = nutrition;
+
             const availableFlags = calculateAvailableFlags(productsWithDetails);
             finalFlags = validateFlags(requestedFlags || dish.flags, availableFlags);
 
@@ -229,18 +250,42 @@ exports.updateDish = async (id, dishData, images) => {
             category: finalCategory,
         };
 
-        if (calculatedNutrition) {
-            if (restData.calories === undefined) updateData.calories = calculatedNutrition.calories;
-            if (restData.proteins === undefined) updateData.proteins = calculatedNutrition.proteins;
-            if (restData.fats === undefined) updateData.fats = calculatedNutrition.fats;
-            if (restData.carbohydrates === undefined) updateData.carbohydrates = calculatedNutrition.carbohydrates;
+        if (serving_size !== undefined) {
+            updateData.serving_size = serving_size;
         }
 
-        const finalProteins = updateData.proteins ?? dish.proteins;
-        const finalFats = updateData.fats ?? dish.fats;
-        const finalCarbohydrates = updateData.carbohydrates ?? dish.carbohydrates;
-        const finalServingSize = updateData.serving_size ?? dish.serving_size;
-        validateBZUper100g(finalProteins, finalFats, finalCarbohydrates, finalServingSize);
+        let finalProteins = dish.proteins;
+        let finalFats = dish.fats;
+        let finalCarbohydrates = dish.carbohydrates;
+        let finalCalories = dish.calories;
+
+        if (calculatedNutrition) {
+            if (calculatedNutrition.totalWeight === 0) {
+                throw new Error('Total weight of products cannot be zero');
+            }
+            const ratio = newServingSize / calculatedNutrition.totalWeight;
+            const calculatedProteins = calculatedNutrition.totalProteins * ratio;
+            const calculatedFats = calculatedNutrition.totalFats * ratio;
+            const calculatedCarbohydrates = calculatedNutrition.totalCarbohydrates * ratio;
+            const calculatedCalories = calculatedNutrition.totalCalories * ratio;
+
+            if (restData.proteins === undefined) finalProteins = calculatedProteins;
+            if (restData.fats === undefined) finalFats = calculatedFats;
+            if (restData.carbohydrates === undefined) finalCarbohydrates = calculatedCarbohydrates;
+            if (restData.calories === undefined) finalCalories = calculatedCalories;
+        }
+
+        if (restData.proteins !== undefined) finalProteins = restData.proteins;
+        if (restData.fats !== undefined) finalFats = restData.fats;
+        if (restData.carbohydrates !== undefined) finalCarbohydrates = restData.carbohydrates;
+        if (restData.calories !== undefined) finalCalories = restData.calories;
+
+        validateBZUper100g(finalProteins, finalFats, finalCarbohydrates, newServingSize);
+
+        updateData.proteins = finalProteins;
+        updateData.fats = finalFats;
+        updateData.carbohydrates = finalCarbohydrates;
+        updateData.calories = finalCalories;
 
         if (requestedFlags !== undefined || productsData !== undefined) {
             updateData.flags = finalFlags;

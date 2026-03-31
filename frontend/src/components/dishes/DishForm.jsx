@@ -12,7 +12,7 @@ const schema = yup.object({
     proteins: yup.number().min(0).max(100, 'Не может превышать 100').nullable(),
     fats: yup.number().min(0).max(100, 'Не может превышать 100').nullable(),
     carbohydrates: yup.number().min(0).max(100, 'Не может превышать 100').nullable(),
-    category: yup.string().required('Выберите категорию'),
+    category: yup.string().nullable(),
     flags: yup.array().of(yup.string()),
     products: yup.array().of(
         yup.object({

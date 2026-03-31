@@ -60,7 +60,9 @@ exports.createProduct = async (req, res, next) => {
 
 exports.updateProduct = async (req, res, next) => {
     try {
-        const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : undefined;
+        const images = (req.files && req.files.length > 0)
+            ? req.files.map(file => `/uploads/${file.filename}`)
+            : undefined;
         const productData = {
             name: req.body.name,
             calories: req.body.calories !== undefined ? parseFloat(req.body.calories) : undefined,

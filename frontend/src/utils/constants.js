@@ -37,3 +37,5 @@ export const MACROS = {
     '!суп': 'Суп',
     '!перекус': 'Перекус'
 };
+
+export const DEFAULT_IMAGE = '/images/default.jpg';

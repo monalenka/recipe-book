@@ -25,6 +25,7 @@ exports.createDish = async (req, res, next) => {
         const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
         const products = req.body.products ? JSON.parse(req.body.products) : [];
         const flags = req.body.flags ? JSON.parse(req.body.flags) : [];
+        const category = req.body.category && req.body.category.trim() !== '' ? req.body.category : undefined;
 
         const dishData = {
             name: req.body.name,
@@ -33,7 +34,7 @@ exports.createDish = async (req, res, next) => {
             proteins: req.body.proteins !== undefined ? parseFloat(req.body.proteins) : undefined,
             fats: req.body.fats !== undefined ? parseFloat(req.body.fats) : undefined,
             carbohydrates: req.body.carbohydrates !== undefined ? parseFloat(req.body.carbohydrates) : undefined,
-            category: req.body.category,
+            category,
             flags,
             products,
         };
@@ -47,9 +48,12 @@ exports.createDish = async (req, res, next) => {
 
 exports.updateDish = async (req, res, next) => {
     try {
-        const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : undefined;
+        const images = (req.files && req.files.length > 0)
+            ? req.files.map(file => `/uploads/${file.filename}`)
+            : undefined;
         const products = req.body.products ? JSON.parse(req.body.products) : undefined;
         const flags = req.body.flags ? JSON.parse(req.body.flags) : undefined;
+        const category = req.body.category && req.body.category.trim() !== '' ? req.body.category : undefined;
 
         const dishData = {
             name: req.body.name,
@@ -58,7 +62,7 @@ exports.updateDish = async (req, res, next) => {
             proteins: req.body.proteins !== undefined ? parseFloat(req.body.proteins) : undefined,
             fats: req.body.fats !== undefined ? parseFloat(req.body.fats) : undefined,
             carbohydrates: req.body.carbohydrates !== undefined ? parseFloat(req.body.carbohydrates) : undefined,
-            category: req.body.category,
+            category,
             flags,
             products,
         };

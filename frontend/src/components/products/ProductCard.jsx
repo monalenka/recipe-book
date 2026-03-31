@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { DEFAULT_IMAGE } from '../../utils/constants';
 
 const ProductCard = ({ product, onDelete }) => {
-    const mainImage = product.images && product.images[0] ? product.images[0].image_url : null;
+    const mainImage = product.images && product.images.length > 0
+        ? product.images[0].image_url
+        : DEFAULT_IMAGE;
 
     const cardStyle = {
         border: '1px solid #ddd',
@@ -35,12 +38,31 @@ const ProductCard = ({ product, onDelete }) => {
 
     const buttonGroupStyle = {
         display: 'flex',
-        gap: '10px',
+        flexWrap: 'wrap',
+        gap: '8px',
         marginTop: '10px',
     };
 
+    const linkButtonStyle = {
+        padding: '6px 12px',
+        backgroundColor: '#4a90e2',
+        color: 'white',
+        textDecoration: 'none',
+        borderRadius: '4px',
+        fontSize: '12px',
+        textAlign: 'center',
+        flex: '1 0 auto',
+    };
+
     const deleteButtonStyle = {
+        padding: '6px 12px',
         backgroundColor: '#e74c3c',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '12px',
+        flex: '1 0 auto',
     };
 
     return (
@@ -52,8 +74,8 @@ const ProductCard = ({ product, onDelete }) => {
             <p style={infoStyle}>Категория: {product.category}</p>
             <p style={infoStyle}>Флаги: {product.flags.join(', ') || 'нет'}</p>
             <div style={buttonGroupStyle}>
-                <Link to={`/products/${product.id}`}>Подробнее</Link>
-                <Link to={`/products/${product.id}/edit`}>Редактировать</Link>
+                <Link to={`/products/${product.id}`} style={linkButtonStyle}>Подробнее</Link>
+                <Link to={`/products/${product.id}/edit`} style={linkButtonStyle}>Редактировать</Link>
                 <button onClick={() => onDelete(product.id)} style={deleteButtonStyle}>Удалить</button>
             </div>
         </div>

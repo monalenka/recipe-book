@@ -13,26 +13,53 @@ const SearchBar = ({ type }) => {
         }
     }, [type, productFilters.search, dishFilters.search]);
 
-    const handleSearch = (e) => {
-        const value = e.target.value;
-        setLocalSearch(value);
+    const handleInputChange = (e) => {
+        setLocalSearch(e.target.value);
+    };
+
+    const handleSearchClick = () => {
         if (type === 'product') {
-            updateProductFilters({ search: value });
+            updateProductFilters({ search: localSearch });
         } else {
-            updateDishFilters({ search: value });
+            updateDishFilters({ search: localSearch });
+        }
+    };
+
+    const handleClearClick = () => {
+        setLocalSearch('');
+        if (type === 'product') {
+            updateProductFilters({ search: '' });
+        } else {
+            updateDishFilters({ search: '' });
         }
     };
 
     const containerStyle = {
         marginBottom: '20px',
+        display: 'flex',
+        gap: '10px',
     };
 
     const inputStyle = {
-        width: '100%',
+        flex: 1,
         padding: '10px',
         fontSize: '16px',
         border: '1px solid #ddd',
         borderRadius: '4px',
+    };
+
+    const buttonStyle = {
+        padding: '10px 20px',
+        backgroundColor: '#4a90e2',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+    };
+
+    const clearButtonStyle = {
+        ...buttonStyle,
+        backgroundColor: '#6c757d',
     };
 
     return (
@@ -41,9 +68,15 @@ const SearchBar = ({ type }) => {
                 type="text"
                 placeholder="Поиск..."
                 value={localSearch}
-                onChange={handleSearch}
+                onChange={handleInputChange}
                 style={inputStyle}
             />
+            <button onClick={handleSearchClick} style={buttonStyle}>
+                Найти
+            </button>
+            <button onClick={handleClearClick} style={clearButtonStyle}>
+                Сбросить
+            </button>
         </div>
     );
 };

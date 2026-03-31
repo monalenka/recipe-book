@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { DEFAULT_IMAGE } from '../../utils/constants';
 
 const DishCard = ({ dish, onDelete }) => {
-    const mainImage = dish.images && dish.images[0] ? dish.images[0].image_url : null;
+    const mainImage = dish.images && dish.images.length > 0
+        ? dish.images[0].image_url
+        : DEFAULT_IMAGE;
 
     const cardStyle = {
         border: '1px solid #ddd',
@@ -35,12 +38,31 @@ const DishCard = ({ dish, onDelete }) => {
 
     const buttonGroupStyle = {
         display: 'flex',
-        gap: '10px',
+        flexWrap: 'wrap',
+        gap: '8px',
         marginTop: '10px',
     };
 
+    const linkButtonStyle = {
+        padding: '6px 12px',
+        backgroundColor: '#4a90e2',
+        color: 'white',
+        textDecoration: 'none',
+        borderRadius: '4px',
+        fontSize: '12px',
+        textAlign: 'center',
+        flex: '1 0 auto',
+    };
+
     const deleteButtonStyle = {
+        padding: '6px 12px',
         backgroundColor: '#e74c3c',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '12px',
+        flex: '1 0 auto',
     };
 
     return (
@@ -53,8 +75,8 @@ const DishCard = ({ dish, onDelete }) => {
             <p style={infoStyle}>Категория: {dish.category}</p>
             <p style={infoStyle}>Флаги: {dish.flags.join(', ') || 'нет'}</p>
             <div style={buttonGroupStyle}>
-                <Link to={`/dishes/${dish.id}`}>Подробнее</Link>
-                <Link to={`/dishes/${dish.id}/edit`}>Редактировать</Link>
+                <Link to={`/dishes/${dish.id}`} style={linkButtonStyle}>Подробнее</Link>
+                <Link to={`/dishes/${dish.id}/edit`} style={linkButtonStyle}>Редактировать</Link>
                 <button onClick={() => onDelete(dish.id)} style={deleteButtonStyle}>Удалить</button>
             </div>
         </div>

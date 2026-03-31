@@ -1,28 +1,37 @@
 exports.calculateDishNutrition = (productsData) => {
     if (!productsData || productsData.length === 0) {
-        return { calories: 0, proteins: 0, fats: 0, carbohydrates: 0 };
+        return {
+            totalCalories: 0,
+            totalProteins: 0,
+            totalFats: 0,
+            totalCarbohydrates: 0,
+            totalWeight: 0,
+        };
     }
 
-    const totals = productsData.reduce(
-        (acc, item) => {
-            const quantity = item.quantity || 0;
-            const factor = quantity / 100;
+    let totalCalories = 0;
+    let totalProteins = 0;
+    let totalFats = 0;
+    let totalCarbohydrates = 0;
+    let totalWeight = 0;
 
-            acc.calories += (item.product.calories || 0) * factor;
-            acc.proteins += (item.product.proteins || 0) * factor;
-            acc.fats += (item.product.fats || 0) * factor;
-            acc.carbohydrates += (item.product.carbohydrates || 0) * factor;
+    for (const item of productsData) {
+        const quantity = item.quantity || 0;
+        const factor = quantity / 100;
 
-            return acc;
-        },
-        { calories: 0, proteins: 0, fats: 0, carbohydrates: 0 }
-    );
+        totalCalories += (item.product.calories || 0) * factor;
+        totalProteins += (item.product.proteins || 0) * factor;
+        totalFats += (item.product.fats || 0) * factor;
+        totalCarbohydrates += (item.product.carbohydrates || 0) * factor;
+        totalWeight += quantity;
+    }
 
     return {
-        calories: Math.round(totals.calories * 10) / 10,
-        proteins: Math.round(totals.proteins * 10) / 10,
-        fats: Math.round(totals.fats * 10) / 10,
-        carbohydrates: Math.round(totals.carbohydrates * 10) / 10,
+        totalCalories,
+        totalProteins,
+        totalFats,
+        totalCarbohydrates,
+        totalWeight,
     };
 };
 
