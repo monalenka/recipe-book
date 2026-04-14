@@ -3,7 +3,11 @@ const dishService = require('../services/dishService');
 exports.getAllDishes = async (req, res, next) => {
     try {
         const { search, category, flags } = req.query;
-        const filters = { search, category, flags };
+        let flagsArray = null;
+        if (flags) {
+            flagsArray = Array.isArray(flags) ? flags : flags.split(',');
+        }
+        const filters = { search, category, flags: flagsArray };
         const dishes = await dishService.getAllDishes(filters);
         res.json(dishes);
     } catch (error) {
@@ -51,6 +55,7 @@ exports.updateDish = async (req, res, next) => {
         const images = (req.files && req.files.length > 0)
             ? req.files.map(file => `/uploads/${file.filename}`)
             : undefined;
+        const existingImages = req.body.existingImages ? JSON.parse(req.body.existingImages) : undefined;
         const products = req.body.products ? JSON.parse(req.body.products) : undefined;
         const flags = req.body.flags ? JSON.parse(req.body.flags) : undefined;
         const category = req.body.category && req.body.category.trim() !== '' ? req.body.category : undefined;
@@ -69,7 +74,7 @@ exports.updateDish = async (req, res, next) => {
 
         Object.keys(dishData).forEach(key => dishData[key] === undefined && delete dishData[key]);
 
-        const dish = await dishService.updateDish(req.params.id, dishData, images);
+        const dish = await dishService.updateDish(req.params.id, dishData, images, existingImages);
         res.json(dish);
     } catch (error) {
         next(error);

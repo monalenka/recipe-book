@@ -52,10 +52,6 @@ exports.checkDishFlagsAvailability = (products) => {
 };
 
 exports.processMacroInName = (name, selectedCategory) => {
-    if (selectedCategory) {
-        return { name, category: selectedCategory };
-    }
-
     const macroMap = {
         '!десерт': 'Десерт',
         '!первое': 'Первое',
@@ -67,19 +63,30 @@ exports.processMacroInName = (name, selectedCategory) => {
     };
 
     let processedName = name;
-    let detectedCategory = null;
+    for (const macro of Object.keys(macroMap)) {
+        const regex = new RegExp(macro, 'gi');
+        processedName = processedName.replace(regex, '');
+    }
+    processedName = processedName.trim();
 
-    for (const [macro, category] of Object.entries(macroMap)) {
-        const macroIndex = processedName.toLowerCase().indexOf(macro);
-        if (macroIndex !== -1) {
-            detectedCategory = category;
-            processedName = processedName.replace(new RegExp(macro, 'i'), '').trim();
-            break;
+    let category = null;
+    if (selectedCategory) {
+        category = selectedCategory;
+    } else {
+        let bestIndex = Infinity;
+        let bestMacro = null;
+        const lowerName = name.toLowerCase();
+        for (const macro of Object.keys(macroMap)) {
+            const index = lowerName.indexOf(macro);
+            if (index !== -1 && index < bestIndex) {
+                bestIndex = index;
+                bestMacro = macro;
+            }
+        }
+        if (bestMacro) {
+            category = macroMap[bestMacro];
         }
     }
 
-    return {
-        name: processedName,
-        category: detectedCategory,
-    };
+    return { name: processedName, category };
 };

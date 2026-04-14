@@ -10,16 +10,18 @@ exports.getAllProducts = async (req, res, next) => {
             sortBy,
             sortOrder,
         } = req.query;
-
+        let flagsArray = null;
+        if (flags) {
+            flagsArray = Array.isArray(flags) ? flags : flags.split(',');
+        }
         const filters = {
             search,
             category,
             preparation_status,
-            flags,
+            flags: flagsArray,
             sortBy,
             sortOrder,
         };
-
         const products = await productService.getAllProducts(filters);
         res.json(products);
     } catch (error) {
@@ -63,6 +65,8 @@ exports.updateProduct = async (req, res, next) => {
         const images = (req.files && req.files.length > 0)
             ? req.files.map(file => `/uploads/${file.filename}`)
             : undefined;
+        const existingImages = req.body.existingImages ? JSON.parse(req.body.existingImages) : undefined;
+
         const productData = {
             name: req.body.name,
             calories: req.body.calories !== undefined ? parseFloat(req.body.calories) : undefined,
@@ -77,7 +81,7 @@ exports.updateProduct = async (req, res, next) => {
 
         Object.keys(productData).forEach(key => productData[key] === undefined && delete productData[key]);
 
-        const product = await productService.updateProduct(req.params.id, productData, images);
+        const product = await productService.updateProduct(req.params.id, productData, images, existingImages);
         res.json(product);
     } catch (error) {
         next(error);
@@ -89,6 +93,10 @@ exports.deleteProduct = async (req, res, next) => {
         await productService.deleteProduct(req.params.id);
         res.status(204).send();
     } catch (error) {
-        next(error);
+        if (error.message.includes('Невозможно удалить продукт')) {
+            res.status(400).json({ error: error.message });
+        } else {
+            next(error);
+        }
     }
 };

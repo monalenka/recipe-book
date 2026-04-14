@@ -5,9 +5,11 @@ import Header from '../components/common/Header';
 import SearchBar from '../components/common/SearchBar';
 import FilterPanel from '../components/common/FilterPanel';
 import DishCard from '../components/dishes/DishCard';
+import { useNotification } from '../context/NotificationContext';
 
 const DishesPage = () => {
     const { dishFilters } = useFilters();
+    const { showNotification } = useNotification();
     const [dishes, setDishes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -33,28 +35,17 @@ const DishesPage = () => {
     }, [dishFilters]);
 
     const handleDelete = async (id) => {
-        if (window.confirm('Удалить блюдо?')) {
-            try {
-                await deleteDish(id);
-                fetchDishes();
-            } catch (err) {
-                alert(err.response?.data?.error || 'Ошибка удаления');
-            }
+        try {
+            await deleteDish(id);
+            fetchDishes();
+            showNotification('Блюдо удалено', 'success');
+        } catch (err) {
+            showNotification(err.response?.data?.error || 'Ошибка удаления');
         }
     };
 
-    const containerStyle = {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '20px',
-    };
-
-    const dishesGridStyle = {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '20px',
-        marginTop: '20px',
-    };
+    const containerStyle = { maxWidth: '1200px', margin: '0 auto', padding: '20px' };
+    const dishesGridStyle = { display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '20px' };
 
     if (loading) return <div style={containerStyle}>Загрузка...</div>;
     if (error) return <div style={containerStyle}>{error}</div>;

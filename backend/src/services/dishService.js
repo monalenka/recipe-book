@@ -2,14 +2,12 @@ const { Dish, DishImage, DishProduct, Product, sequelize } = require('../models'
 const { Op } = require('sequelize');
 const { calculateDishNutrition, checkDishFlagsAvailability, processMacroInName } = require('../utils/calculations');
 
-
 const getProductsWithDetails = async (productsData) => {
     const productIds = productsData.map(p => p.product_id);
     const products = await Product.findAll({
         where: { id: productIds },
         attributes: ['id', 'name', 'calories', 'proteins', 'fats', 'carbohydrates', 'flags'],
     });
-
     return productsData.map(item => ({
         ...item,
         product: products.find(p => p.id === item.product_id),
@@ -23,8 +21,6 @@ const calculateAvailableFlags = (productsWithDetails) => {
 
 const validateFlags = (requestedFlags, availableFlags) => {
     if (!requestedFlags || requestedFlags.length === 0) return [];
-
-    const validFlags = [];
     if (requestedFlags.includes('Веган') && !availableFlags.vegan) {
         throw new Error('Flag "Веган" is not available for this dish composition');
     }
@@ -34,7 +30,6 @@ const validateFlags = (requestedFlags, availableFlags) => {
     if (requestedFlags.includes('Без сахара') && !availableFlags.sugar_free) {
         throw new Error('Flag "Без сахара" is not available for this dish composition');
     }
-
     return requestedFlags.filter(flag =>
         (flag === 'Веган' && availableFlags.vegan) ||
         (flag === 'Без глютена' && availableFlags.gluten_free) ||
@@ -42,26 +37,14 @@ const validateFlags = (requestedFlags, availableFlags) => {
     );
 };
 
-const validateBZUper100g = (proteinsPerServing, fatsPerServing, carbsPerServing, servingSize) => {
-    if (!servingSize || servingSize <= 0) return;
-    const totalPer100g = ((proteinsPerServing + fatsPerServing + carbsPerServing) / servingSize) * 100;
-    if (totalPer100g > 100) {
-        throw new Error('Сумма белков, жиров и углеводов в пересчёте на 100 г не может превышать 100');
-    }
-};
-
 exports.getAllDishes = async (filters) => {
     const where = {};
-    const order = [];
-
     if (filters.search) {
         where.name = { [Op.iLike]: `%${filters.search}%` };
     }
-
     if (filters.category) {
         where.category = filters.category;
     }
-
     if (filters.flags) {
         const flagsArray = Array.isArray(filters.flags) ? filters.flags : [filters.flags];
         where.flags = { [Op.contains]: flagsArray };
@@ -69,15 +52,20 @@ exports.getAllDishes = async (filters) => {
 
     const dishes = await Dish.findAll({
         where,
-        order: order.length ? order : [['name', 'ASC']],
+        order: [['name', 'ASC']],
         include: [
             {
                 model: DishImage,
                 as: 'images',
                 attributes: ['id', 'image_url', 'sort_order'],
-                order: [['sort_order', 'ASC']],
             },
         ],
+    });
+
+    dishes.forEach(dish => {
+        if (dish.images && dish.images.length) {
+            dish.images.sort((a, b) => a.sort_order - b.sort_order);
+        }
     });
 
     return dishes;
@@ -90,7 +78,6 @@ exports.getDishById = async (id) => {
                 model: DishImage,
                 as: 'images',
                 attributes: ['id', 'image_url', 'sort_order'],
-                order: [['sort_order', 'ASC']],
             },
             {
                 model: Product,
@@ -105,43 +92,44 @@ exports.getDishById = async (id) => {
         throw new Error('Dish not found');
     }
 
+    if (dish.images && dish.images.length) {
+        dish.images.sort((a, b) => a.sort_order - b.sort_order);
+    }
+
     return dish;
 };
 
 exports.createDish = async (dishData, images) => {
     const transaction = await sequelize.transaction();
-
     try {
         const { products: productsData, name, category: formCategory, flags: requestedFlags, serving_size, ...restData } = dishData;
 
         if (!productsData || productsData.length === 0) {
             throw new Error('Dish must have at least one product');
         }
-
         if (!serving_size || serving_size <= 0) {
             throw new Error('Serving size must be positive');
         }
 
         const processedName = processMacroInName(name, formCategory);
+        if (processedName.name.length < 2) {
+            throw new Error('Название блюда после удаления макроса должно содержать минимум 2 символа');
+        }
         const finalCategory = processedName.category || formCategory;
-
         if (!finalCategory) {
             throw new Error('Category is required');
         }
 
         const productsWithDetails = await getProductsWithDetails(productsData);
         const nutrition = calculateDishNutrition(productsWithDetails);
-
         if (nutrition.totalWeight === 0) {
             throw new Error('Total weight of products cannot be zero');
         }
 
-        const ratio = serving_size / nutrition.totalWeight;
-
-        const calculatedCalories = nutrition.totalCalories * ratio;
-        const calculatedProteins = nutrition.totalProteins * ratio;
-        const calculatedFats = nutrition.totalFats * ratio;
-        const calculatedCarbohydrates = nutrition.totalCarbohydrates * ratio;
+        const calculatedCalories = nutrition.totalCalories;
+        const calculatedProteins = nutrition.totalProteins;
+        const calculatedFats = nutrition.totalFats;
+        const calculatedCarbohydrates = nutrition.totalCarbohydrates;
 
         const availableFlags = calculateAvailableFlags(productsWithDetails);
         const finalFlags = validateFlags(requestedFlags || [], availableFlags);
@@ -150,8 +138,6 @@ exports.createDish = async (dishData, images) => {
         let finalProteins = restData.proteins !== undefined ? restData.proteins : calculatedProteins;
         let finalFats = restData.fats !== undefined ? restData.fats : calculatedFats;
         let finalCarbohydrates = restData.carbohydrates !== undefined ? restData.carbohydrates : calculatedCarbohydrates;
-
-        validateBZUper100g(finalProteins, finalFats, finalCarbohydrates, serving_size);
 
         const dish = await Dish.create(
             {
@@ -185,7 +171,6 @@ exports.createDish = async (dishData, images) => {
         }
 
         await transaction.commit();
-
         return await exports.getDishById(dish.id);
     } catch (error) {
         await transaction.rollback();
@@ -193,9 +178,8 @@ exports.createDish = async (dishData, images) => {
     }
 };
 
-exports.updateDish = async (id, dishData, images) => {
+exports.updateDish = async (id, dishData, images, existingImages) => {
     const transaction = await sequelize.transaction();
-
     try {
         const dish = await Dish.findByPk(id);
         if (!dish) {
@@ -212,19 +196,13 @@ exports.updateDish = async (id, dishData, images) => {
             if (productsData.length === 0) {
                 throw new Error('Dish must have at least one product');
             }
-
             const productsWithDetails = await getProductsWithDetails(productsData);
             const nutrition = calculateDishNutrition(productsWithDetails);
             calculatedNutrition = nutrition;
-
             const availableFlags = calculateAvailableFlags(productsWithDetails);
             finalFlags = validateFlags(requestedFlags || dish.flags, availableFlags);
 
-            await DishProduct.destroy({
-                where: { dish_id: id },
-                transaction,
-            });
-
+            await DishProduct.destroy({ where: { dish_id: id }, transaction });
             const dishProducts = productsData.map(item => ({
                 dish_id: id,
                 product_id: item.product_id,
@@ -235,21 +213,18 @@ exports.updateDish = async (id, dishData, images) => {
 
         let finalName = name !== undefined ? name : dish.name;
         let finalCategory = formCategory !== undefined ? formCategory : dish.category;
-
         if (name !== undefined) {
             const processedName = processMacroInName(name, formCategory);
+            if (processedName.name.length < 2) {
+                throw new Error('Название блюда после удаления макроса должно содержать минимум 2 символа');
+            }
             finalName = processedName.name;
             if (processedName.category && formCategory === undefined) {
                 finalCategory = processedName.category;
             }
         }
 
-        const updateData = {
-            ...restData,
-            name: finalName,
-            category: finalCategory,
-        };
-
+        const updateData = { ...restData, name: finalName, category: finalCategory };
         if (serving_size !== undefined) {
             updateData.serving_size = serving_size;
         }
@@ -263,24 +238,15 @@ exports.updateDish = async (id, dishData, images) => {
             if (calculatedNutrition.totalWeight === 0) {
                 throw new Error('Total weight of products cannot be zero');
             }
-            const ratio = newServingSize / calculatedNutrition.totalWeight;
-            const calculatedProteins = calculatedNutrition.totalProteins * ratio;
-            const calculatedFats = calculatedNutrition.totalFats * ratio;
-            const calculatedCarbohydrates = calculatedNutrition.totalCarbohydrates * ratio;
-            const calculatedCalories = calculatedNutrition.totalCalories * ratio;
-
-            if (restData.proteins === undefined) finalProteins = calculatedProteins;
-            if (restData.fats === undefined) finalFats = calculatedFats;
-            if (restData.carbohydrates === undefined) finalCarbohydrates = calculatedCarbohydrates;
-            if (restData.calories === undefined) finalCalories = calculatedCalories;
+            if (restData.proteins === undefined) finalProteins = calculatedNutrition.totalProteins;
+            if (restData.fats === undefined) finalFats = calculatedNutrition.totalFats;
+            if (restData.carbohydrates === undefined) finalCarbohydrates = calculatedNutrition.totalCarbohydrates;
+            if (restData.calories === undefined) finalCalories = calculatedNutrition.totalCalories;
         }
-
         if (restData.proteins !== undefined) finalProteins = restData.proteins;
         if (restData.fats !== undefined) finalFats = restData.fats;
         if (restData.carbohydrates !== undefined) finalCarbohydrates = restData.carbohydrates;
         if (restData.calories !== undefined) finalCalories = restData.calories;
-
-        validateBZUper100g(finalProteins, finalFats, finalCarbohydrates, newServingSize);
 
         updateData.proteins = finalProteins;
         updateData.fats = finalFats;
@@ -293,11 +259,21 @@ exports.updateDish = async (id, dishData, images) => {
 
         await dish.update(updateData, { transaction });
 
-        if (images !== undefined) {
-            await DishImage.destroy({
+        if (existingImages !== undefined) {
+            const currentImages = await DishImage.findAll({
                 where: { dish_id: id },
+                attributes: ['id', 'image_url'],
                 transaction,
             });
+
+            const urlsToKeep = existingImages;
+            const imagesToDelete = currentImages.filter(img => !urlsToKeep.includes(img.image_url));
+            if (imagesToDelete.length) {
+                await DishImage.destroy({
+                    where: { id: imagesToDelete.map(img => img.id) },
+                    transaction,
+                });
+            }
 
             if (images && images.length > 0) {
                 const dishImages = images.map((url, index) => ({
@@ -307,10 +283,14 @@ exports.updateDish = async (id, dishData, images) => {
                 }));
                 await DishImage.bulkCreate(dishImages, { transaction });
             }
+
+            await sequelize.query(
+                `UPDATE dishes SET updated_at = NOW() WHERE id = :id`,
+                { replacements: { id }, type: sequelize.QueryTypes.UPDATE, transaction }
+            );
         }
 
         await transaction.commit();
-
         return await exports.getDishById(id);
     } catch (error) {
         await transaction.rollback();
@@ -323,7 +303,6 @@ exports.deleteDish = async (id) => {
     if (!dish) {
         throw new Error('Dish not found');
     }
-
     await dish.destroy();
     return true;
 };

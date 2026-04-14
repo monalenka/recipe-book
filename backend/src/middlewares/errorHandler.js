@@ -33,5 +33,9 @@ module.exports = (err, req, res, next) => {
         return res.status(400).json({ error: err.message });
     }
 
+    if (err.message && err.message.includes('Название блюда после удаления макроса должно содержать минимум 2 символа')) {
+        return res.status(400).json({ error: err.message });
+    }
+
     res.status(500).json({ error: 'Internal server error' });
 };
