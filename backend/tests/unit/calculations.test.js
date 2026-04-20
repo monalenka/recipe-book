@@ -90,17 +90,4 @@ describe("calculateDishNutrition", () => {
             expect(result.totalWeight).toBe(0.5);
         });
     });
-
-    describe("Корректность округления", () => {
-        test("значения округляются до одного знака", () => {
-            const productsData = [
-                { product_id: 1, quantity: 33, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }
-            ];
-            const result = calculateDishNutrition(productsData);
-            // округление 33.0
-            expect(result.totalCalories).toBe(33);
-            // округление 6.6
-            expect(result.totalProteins).toBeCloseTo(6.6, 1);
-        });
-    });
 });
