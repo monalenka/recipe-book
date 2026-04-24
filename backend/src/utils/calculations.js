@@ -1,20 +1,10 @@
 exports.calculateDishNutrition = (productsData) => {
-    if (productsData === null || productsData === undefined) {
-        throw new Error('productsData is required');
-    }
-
     if (!Array.isArray(productsData)) {
         throw new Error('productsData must be an array');
     }
 
     if (productsData.length === 0) {
-        return {
-            totalCalories: 0,
-            totalProteins: 0,
-            totalFats: 0,
-            totalCarbohydrates: 0,
-            totalWeight: 0,
-        };
+        throw new Error('Dish must contain at least one product');
     }
 
     let totalCalories = 0;
@@ -34,8 +24,8 @@ exports.calculateDishNutrition = (productsData) => {
         if (typeof item.quantity !== 'number' || isNaN(item.quantity)) {
             throw new Error('Product quantity must be a number');
         }
-        if (item.quantity < 0) {
-            throw new Error('Product quantity cannot be negative');
+        if (item.quantity <= 0) {
+            throw new Error('Product quantity must be greater than 0');
         }
 
         if (!item.product || typeof item.product !== 'object') {

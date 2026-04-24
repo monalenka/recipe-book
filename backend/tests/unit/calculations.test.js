@@ -1,26 +1,12 @@
 const { calculateDishNutrition } = require('../../src/utils/calculations');
 
 describe("calculateDishNutrition", () => {
-    const validProduct = {
-        product_id: 1,
-        quantity: 200,
-        product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 }
-    };
-
+    // ---- ЭКВИВАЛЕНТНОЕ РАЗБИЕНИЕ ----
     describe("Эквивалентное разбиение", () => {
-        test("пустой массив продуктов возвращает нули", () => {
-            const result = calculateDishNutrition([]);
-            expect(result).toEqual({
-                totalCalories: 0,
-                totalProteins: 0,
-                totalFats: 0,
-                totalCarbohydrates: 0,
-                totalWeight: 0
-            });
-        });
-
-        test("продукт с положительными значениями", () => {
-            const products = [{ quantity: 200, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }];
+        test("один продукт с положительными значениями", () => {
+            const products = [
+                { quantity: 200, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }
+            ];
             const result = calculateDishNutrition(products);
             expect(result.totalCalories).toBeCloseTo(200, 1);
             expect(result.totalProteins).toBeCloseTo(40, 1);
@@ -42,59 +28,75 @@ describe("calculateDishNutrition", () => {
             expect(result.totalWeight).toBe(250);
         });
 
-        test("продукты с нулевыми значениями БЖУ", () => {
+        test("продукт с нулевыми значениями БЖУ", () => {
             const products = [
-                { quantity: 100, product: { calories: 0, proteins: 0, fats: 0, carbohydrates: 0 } },
-                { quantity: 200, product: { calories: 0, proteins: 0, fats: 0, carbohydrates: 0 } }
+                { quantity: 100, product: { calories: 0, proteins: 0, fats: 0, carbohydrates: 0 } }
             ];
             const result = calculateDishNutrition(products);
             expect(result.totalCalories).toBe(0);
             expect(result.totalProteins).toBe(0);
             expect(result.totalFats).toBe(0);
             expect(result.totalCarbohydrates).toBe(0);
-            expect(result.totalWeight).toBe(300);
+            expect(result.totalWeight).toBe(100);
         });
     });
 
+    // ---- АНАЛИЗ ГРАНИЧНЫХ ЗНАЧЕНИЙ ----
     describe("Анализ граничных значений", () => {
-        test("количество продукта = 0 (нижняя граница)", () => {
-            const products = [{ quantity: 0, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }];
+        test("минимальное количество продукта", () => {
+            const products = [
+                { quantity: 0.1, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }
+            ];
             const result = calculateDishNutrition(products);
-            expect(result.totalCalories).toBe(0);
-            expect(result.totalWeight).toBe(0);
+            expect(result.totalCalories).toBeCloseTo(0.1, 1);
+            expect(result.totalWeight).toBeCloseTo(0.1, 1);
+        });
+
+        test("количество продукта – дробное", () => {
+            const products = [
+                { quantity: 0.5, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }
+            ];
+            const result = calculateDishNutrition(products);
+            expect(result.totalCalories).toBeCloseTo(0.5, 1);
+            expect(result.totalWeight).toBeCloseTo(0.5, 1);
         });
 
         test("количество продукта очень большое", () => {
-            const products = [{ quantity: 1000000, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }];
+            const products = [
+                { quantity: 1000000, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }
+            ];
             const result = calculateDishNutrition(products);
             expect(result.totalCalories).toBeCloseTo(1000000, 1);
             expect(result.totalWeight).toBe(1000000);
         });
-
-        test("количество продукта – дробное (0.5 грамма)", () => {
-            const products = [{ quantity: 0.5, product: { calories: 100, proteins: 20, fats: 5, carbohydrates: 10 } }];
-            const result = calculateDishNutrition(products);
-            expect(result.totalCalories).toBeCloseTo(0.5, 1);
-            expect(result.totalWeight).toBe(0.5);
-        });
     });
 
-    describe("Обработка невалидных данных (ошибки)", () => {
+    // ---- ОБРАБОТКА НЕВАЛИДНЫХ ДАННЫХ ----
+    describe("Обработка невалидных данных", () => {
         test("null вместо массива выбрасывает ошибку", () => {
-            expect(() => calculateDishNutrition(null)).toThrow('productsData is required');
+            expect(() => calculateDishNutrition(null)).toThrow('productsData must be an array');
         });
 
         test("undefined вместо массива выбрасывает ошибку", () => {
-            expect(() => calculateDishNutrition(undefined)).toThrow('productsData is required');
+            expect(() => calculateDishNutrition(undefined)).toThrow('productsData must be an array');
         });
 
         test("не массив (число) выбрасывает ошибку", () => {
             expect(() => calculateDishNutrition(123)).toThrow('productsData must be an array');
         });
 
+        test("пустой массив выбрасывает ошибку", () => {
+            expect(() => calculateDishNutrition([])).toThrow('Dish must contain at least one product');
+        });
+
         test("отрицательное quantity выбрасывает ошибку", () => {
             const invalid = [{ quantity: -10, product: { calories: 100 } }];
-            expect(() => calculateDishNutrition(invalid)).toThrow('Product quantity cannot be negative');
+            expect(() => calculateDishNutrition(invalid)).toThrow('Product quantity must be greater than 0');
+        });
+
+        test("quantity = 0 выбрасывает ошибку", () => {
+            const invalid = [{ quantity: 0, product: { calories: 100 } }];
+            expect(() => calculateDishNutrition(invalid)).toThrow('Product quantity must be greater than 0');
         });
 
         test("quantity = NaN выбрасывает ошибку", () => {
