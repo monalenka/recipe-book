@@ -1,5 +1,13 @@
 exports.calculateDishNutrition = (productsData) => {
-    if (!productsData || productsData.length === 0) {
+    if (productsData === null || productsData === undefined) {
+        throw new Error('productsData is required');
+    }
+
+    if (!Array.isArray(productsData)) {
+        throw new Error('productsData must be an array');
+    }
+
+    if (productsData.length === 0) {
         return {
             totalCalories: 0,
             totalProteins: 0,
@@ -16,13 +24,31 @@ exports.calculateDishNutrition = (productsData) => {
     let totalWeight = 0;
 
     for (const item of productsData) {
-        const quantity = item.quantity || 0;
+        if (!item || typeof item !== 'object') {
+            throw new Error('Each product item must be an object');
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(item, 'quantity')) {
+            throw new Error('Product item must have "quantity" field');
+        }
+        if (typeof item.quantity !== 'number' || isNaN(item.quantity)) {
+            throw new Error('Product quantity must be a number');
+        }
+        if (item.quantity < 0) {
+            throw new Error('Product quantity cannot be negative');
+        }
+
+        if (!item.product || typeof item.product !== 'object') {
+            throw new Error('Product item must have "product" object');
+        }
+
+        const quantity = item.quantity;
         const factor = quantity / 100;
 
-        totalCalories += (item.product.calories || 0) * factor;
-        totalProteins += (item.product.proteins || 0) * factor;
-        totalFats += (item.product.fats || 0) * factor;
-        totalCarbohydrates += (item.product.carbohydrates || 0) * factor;
+        totalCalories += (typeof item.product.calories === 'number' ? item.product.calories : 0) * factor;
+        totalProteins += (typeof item.product.proteins === 'number' ? item.product.proteins : 0) * factor;
+        totalFats += (typeof item.product.fats === 'number' ? item.product.fats : 0) * factor;
+        totalCarbohydrates += (typeof item.product.carbohydrates === 'number' ? item.product.carbohydrates : 0) * factor;
         totalWeight += quantity;
     }
 
