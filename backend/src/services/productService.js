@@ -19,22 +19,24 @@ exports.getAllProducts = async (filters) => {
         where.flags = { [Op.contains]: flagsArray };
     }
 
+    const sortOrder = (filters.sortOrder || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+
     if (filters.sortBy) {
         switch (filters.sortBy) {
             case 'name':
-                order.push(['name', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['name', sortOrder]);
                 break;
             case 'calories':
-                order.push(['calories', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['calories', sortOrder]);
                 break;
             case 'proteins':
-                order.push(['proteins', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['proteins', sortOrder]);
                 break;
             case 'fats':
-                order.push(['fats', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['fats', sortOrder]);
                 break;
             case 'carbohydrates':
-                order.push(['carbohydrates', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['carbohydrates', sortOrder]);
                 break;
             default:
                 order.push(['name', 'ASC']);

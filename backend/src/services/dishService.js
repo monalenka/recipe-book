@@ -8,10 +8,13 @@ const getProductsWithDetails = async (productsData) => {
         where: { id: productIds },
         attributes: ['id', 'name', 'calories', 'proteins', 'fats', 'carbohydrates', 'flags'],
     });
-    return productsData.map(item => ({
-        ...item,
-        product: products.find(p => p.id === item.product_id),
-    }));
+    return productsData.map(item => {
+        const product = products.find(p => p.id === item.product_id);
+        if (!product) {
+            throw new Error(`Product with id ${item.product_id} not found`);
+        }
+        return { ...item, product };
+    });
 };
 
 const calculateAvailableFlags = (productsWithDetails) => {

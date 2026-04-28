@@ -1,5 +1,40 @@
 const dishService = require('../services/dishService');
 
+exports.createDish = async (req, res, next) => {
+    try {
+        const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+        let products = [];
+        let flags = [];
+        let category = req.body.category && req.body.category.trim() !== '' ? req.body.category : undefined;
+
+        if (req.is('multipart/form-data')) {
+            products = req.body.products ? JSON.parse(req.body.products) : [];
+            flags = req.body.flags ? JSON.parse(req.body.flags) : [];
+        } else {
+            products = req.body.products || [];
+            flags = req.body.flags || [];
+            category = category || req.body.category;
+        }
+
+        const dishData = {
+            name: req.body.name,
+            serving_size: parseFloat(req.body.serving_size),
+            calories: req.body.calories !== undefined ? parseFloat(req.body.calories) : undefined,
+            proteins: req.body.proteins !== undefined ? parseFloat(req.body.proteins) : undefined,
+            fats: req.body.fats !== undefined ? parseFloat(req.body.fats) : undefined,
+            carbohydrates: req.body.carbohydrates !== undefined ? parseFloat(req.body.carbohydrates) : undefined,
+            category,
+            flags,
+            products,
+        };
+
+        const dish = await dishService.createDish(dishData, images);
+        res.status(201).json(dish);
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.getAllDishes = async (req, res, next) => {
     try {
         const { search, category, flags } = req.query;
@@ -19,32 +54,6 @@ exports.getDishById = async (req, res, next) => {
     try {
         const dish = await dishService.getDishById(req.params.id);
         res.json(dish);
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.createDish = async (req, res, next) => {
-    try {
-        const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
-        const products = req.body.products ? JSON.parse(req.body.products) : [];
-        const flags = req.body.flags ? JSON.parse(req.body.flags) : [];
-        const category = req.body.category && req.body.category.trim() !== '' ? req.body.category : undefined;
-
-        const dishData = {
-            name: req.body.name,
-            serving_size: parseFloat(req.body.serving_size),
-            calories: req.body.calories !== undefined ? parseFloat(req.body.calories) : undefined,
-            proteins: req.body.proteins !== undefined ? parseFloat(req.body.proteins) : undefined,
-            fats: req.body.fats !== undefined ? parseFloat(req.body.fats) : undefined,
-            carbohydrates: req.body.carbohydrates !== undefined ? parseFloat(req.body.carbohydrates) : undefined,
-            category,
-            flags,
-            products,
-        };
-
-        const dish = await dishService.createDish(dishData, images);
-        res.status(201).json(dish);
     } catch (error) {
         next(error);
     }

@@ -1,5 +1,40 @@
 const productService = require('../services/productService');
 
+exports.createProduct = async (req, res, next) => {
+    try {
+        let images = [];
+        let productData;
+        const isMultipart = req.is('multipart/form-data');
+
+        if (isMultipart) {
+            images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+            productData = {
+                name: req.body.name,
+                calories: parseFloat(req.body.calories),
+                proteins: parseFloat(req.body.proteins),
+                fats: parseFloat(req.body.fats),
+                carbohydrates: parseFloat(req.body.carbohydrates),
+                ingredients: req.body.ingredients || null,
+                category: req.body.category,
+                preparation_status: req.body.preparation_status,
+                flags: req.body.flags ? JSON.parse(req.body.flags) : [],
+            };
+        } else {
+            productData = req.body;
+            images = productData.images || [];
+        }
+
+        ['calories', 'proteins', 'fats', 'carbohydrates'].forEach(field => {
+            if (productData[field] !== undefined) productData[field] = parseFloat(productData[field]);
+        });
+
+        const product = await productService.createProduct(productData, images);
+        res.status(201).json(product);
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.getAllProducts = async (req, res, next) => {
     try {
         const {
@@ -33,28 +68,6 @@ exports.getProductById = async (req, res, next) => {
     try {
         const product = await productService.getProductById(req.params.id);
         res.json(product);
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.createProduct = async (req, res, next) => {
-    try {
-        const images = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
-        const productData = {
-            name: req.body.name,
-            calories: parseFloat(req.body.calories),
-            proteins: parseFloat(req.body.proteins),
-            fats: parseFloat(req.body.fats),
-            carbohydrates: parseFloat(req.body.carbohydrates),
-            ingredients: req.body.ingredients || null,
-            category: req.body.category,
-            preparation_status: req.body.preparation_status,
-            flags: req.body.flags ? JSON.parse(req.body.flags) : [],
-        };
-
-        const product = await productService.createProduct(productData, images);
-        res.status(201).json(product);
     } catch (error) {
         next(error);
     }

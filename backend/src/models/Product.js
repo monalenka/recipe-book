@@ -43,10 +43,9 @@ module.exports = (sequelize, DataTypes) => {
             timestamps: true,
             createdAt: 'created_at',
             updatedAt: 'updated_at',
-            hooks: {
-                beforeCreate: (product) => {
-                    product.updated_at = null;
-                }
+            updated_at: {
+                type: DataTypes.DATE,
+                allowNull: true,
             },
             validate: {
                 bzuSumValid() {

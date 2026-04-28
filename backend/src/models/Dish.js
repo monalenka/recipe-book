@@ -35,11 +35,10 @@ module.exports = (sequelize, DataTypes) => {
             timestamps: true,
             createdAt: 'created_at',
             updatedAt: 'updated_at',
-            hooks: {
-                beforeCreate: (dish) => {
-                    dish.updated_at = null;
-                }
-            }
+            updated_at: {
+                type: DataTypes.DATE,
+                allowNull: true,
+            },
         }
     );
     return Dish;
