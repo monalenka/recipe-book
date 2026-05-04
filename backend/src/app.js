@@ -13,6 +13,7 @@ app.use('/uploads', express.static('uploads'));
 
 app.use('/api/products', productRoutes);
 app.use('/api/dishes', dishRoutes);
+app.use('/api/test', require('./routes/testRoutes'));
 
 app.use(errorHandler);
 

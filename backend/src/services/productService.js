@@ -1,6 +1,5 @@
+const { Product, ProductImage, DishProduct, Dish, sequelize } = require('../models');
 const { Op } = require('sequelize');
-
-const { Product, ProductImage, DishProduct, sequelize } = require('../models');
 
 exports.getAllProducts = async (filters) => {
     const where = {};
@@ -9,36 +8,35 @@ exports.getAllProducts = async (filters) => {
     if (filters.search) {
         where.name = { [Op.iLike]: `%${filters.search}%` };
     }
-
     if (filters.category) {
         where.category = filters.category;
     }
-
     if (filters.preparation_status) {
         where.preparation_status = filters.preparation_status;
     }
-
     if (filters.flags) {
         const flagsArray = Array.isArray(filters.flags) ? filters.flags : [filters.flags];
         where.flags = { [Op.contains]: flagsArray };
     }
 
+    const sortOrder = (filters.sortOrder || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+
     if (filters.sortBy) {
         switch (filters.sortBy) {
             case 'name':
-                order.push(['name', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['name', sortOrder]);
                 break;
             case 'calories':
-                order.push(['calories', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['calories', sortOrder]);
                 break;
             case 'proteins':
-                order.push(['proteins', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['proteins', sortOrder]);
                 break;
             case 'fats':
-                order.push(['fats', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['fats', sortOrder]);
                 break;
             case 'carbohydrates':
-                order.push(['carbohydrates', filters.sortOrder === 'desc' ? 'DESC' : 'ASC']);
+                order.push(['carbohydrates', sortOrder]);
                 break;
             default:
                 order.push(['name', 'ASC']);
@@ -55,9 +53,13 @@ exports.getAllProducts = async (filters) => {
                 model: ProductImage,
                 as: 'images',
                 attributes: ['id', 'image_url', 'sort_order'],
-                order: [['sort_order', 'ASC']],
             },
         ],
+    });
+    products.forEach(product => {
+        if (product.images && product.images.length) {
+            product.images.sort((a, b) => a.sort_order - b.sort_order);
+        }
     });
 
     return products;
@@ -70,13 +72,16 @@ exports.getProductById = async (id) => {
                 model: ProductImage,
                 as: 'images',
                 attributes: ['id', 'image_url', 'sort_order'],
-                order: [['sort_order', 'ASC']],
             },
         ],
     });
 
     if (!product) {
         throw new Error('Product not found');
+    }
+
+    if (product.images && product.images.length) {
+        product.images.sort((a, b) => a.sort_order - b.sort_order);
     }
 
     return product;
@@ -98,7 +103,6 @@ exports.createProduct = async (productData, images) => {
         }
 
         await transaction.commit();
-
         return await exports.getProductById(product.id);
     } catch (error) {
         await transaction.rollback();
@@ -106,9 +110,8 @@ exports.createProduct = async (productData, images) => {
     }
 };
 
-exports.updateProduct = async (id, productData, images) => {
+exports.updateProduct = async (id, productData, images, existingImages) => {
     const transaction = await sequelize.transaction();
-
     try {
         const product = await Product.findByPk(id);
         if (!product) {
@@ -117,11 +120,21 @@ exports.updateProduct = async (id, productData, images) => {
 
         await product.update(productData, { transaction });
 
-        if (images !== undefined) {
-            await ProductImage.destroy({
+        if (existingImages !== undefined) {
+            const currentImages = await ProductImage.findAll({
                 where: { product_id: id },
+                attributes: ['id', 'image_url'],
                 transaction,
             });
+
+            const urlsToKeep = existingImages;
+            const imagesToDelete = currentImages.filter(img => !urlsToKeep.includes(img.image_url));
+            if (imagesToDelete.length) {
+                await ProductImage.destroy({
+                    where: { id: imagesToDelete.map(img => img.id) },
+                    transaction,
+                });
+            }
 
             if (images && images.length > 0) {
                 const productImages = images.map((url, index) => ({
@@ -132,9 +145,18 @@ exports.updateProduct = async (id, productData, images) => {
                 await ProductImage.bulkCreate(productImages, { transaction });
             }
         }
-
+        console.log('existingImages received:', existingImages);
+        if (existingImages !== undefined) {
+            product.updated_at = new Date();
+            const [updatedRows] = await sequelize.query(
+                `UPDATE products SET updated_at = NOW() WHERE id = :id`,
+                { replacements: { id }, type: sequelize.QueryTypes.UPDATE, transaction }
+            );
+            const reloaded = await Product.findByPk(id, { transaction });
+        }
+        console.log('Committing transaction...');
         await transaction.commit();
-
+        console.log('Transaction committed');
         return await exports.getProductById(id);
     } catch (error) {
         await transaction.rollback();
@@ -146,9 +168,10 @@ exports.deleteProduct = async (id) => {
     const product = await Product.findByPk(id, {
         include: [
             {
-                model: DishProduct,
+                model: Dish,
                 as: 'dishes',
                 through: { attributes: [] },
+                attributes: ['id', 'name'],
             },
         ],
     });
@@ -159,7 +182,7 @@ exports.deleteProduct = async (id) => {
 
     if (product.dishes && product.dishes.length > 0) {
         const dishNames = product.dishes.map(dish => dish.name).join(', ');
-        throw new Error(`Cannot delete product. Used in dishes: ${dishNames}`);
+        throw new Error(`Невозможно удалить продукт. Он содержится в ${dishNames}`);
     }
 
     await product.destroy();

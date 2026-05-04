@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getProductById, deleteProduct } from '../api/products';
 import Header from '../components/common/Header';
+import { useNotification } from '../context/NotificationContext';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { showNotification } = useNotification();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -28,36 +30,18 @@ const ProductDetailPage = () => {
         if (window.confirm('Удалить продукт?')) {
             try {
                 await deleteProduct(id);
+                showNotification('Продукт удалён', 'success');
                 navigate('/products');
             } catch (err) {
-                alert(err.response?.data?.error || 'Ошибка удаления');
+                showNotification(err.response?.data?.error || 'Ошибка удаления');
             }
         }
     };
 
-    const containerStyle = {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '20px',
-    };
-
-    const imageStyle = {
-        width: '200px',
-        height: '200px',
-        objectFit: 'cover',
-        borderRadius: '4px',
-        margin: '5px',
-    };
-
-    const infoStyle = {
-        marginBottom: '10px',
-    };
-
-    const buttonGroupStyle = {
-        display: 'flex',
-        gap: '10px',
-        marginTop: '20px',
-    };
+    const containerStyle = { maxWidth: '1200px', margin: '0 auto', padding: '20px' };
+    const imageStyle = { width: '200px', height: '200px', objectFit: 'cover', borderRadius: '4px', margin: '5px' };
+    const infoStyle = { marginBottom: '10px' };
+    const buttonGroupStyle = { display: 'flex', gap: '10px', marginTop: '20px' };
 
     if (loading) return <div style={containerStyle}>Загрузка...</div>;
     if (error) return <div style={containerStyle}>{error}</div>;
@@ -79,6 +63,8 @@ const ProductDetailPage = () => {
                 <div style={infoStyle}><strong>Категория:</strong> {product.category}</div>
                 <div style={infoStyle}><strong>Необходимость готовки:</strong> {product.preparation_status}</div>
                 <div style={infoStyle}><strong>Флаги:</strong> {product.flags.join(', ') || 'нет'}</div>
+                <div style={infoStyle}><strong>Дата создания:</strong> {new Date(product.created_at).toLocaleString()}</div>
+                <div style={infoStyle}><strong>Дата редактирования:</strong> {product.updated_at ? new Date(product.updated_at).toLocaleString() : '—'}</div>
                 <div style={buttonGroupStyle}>
                     <Link to={`/products/${product.id}/edit`}>Редактировать</Link>
                     <button onClick={handleDelete}>Удалить</button>

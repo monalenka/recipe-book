@@ -101,6 +101,22 @@ const FilterPanel = ({ type }) => {
                 </select>
             </div>
 
+            {type === 'product' && (
+                <div style={sectionStyle}>
+                    <label style={labelStyle}>Необходимость готовки:</label>
+                    <select
+                        onChange={(e) => updateProductFilters({ preparation_status: e.target.value })}
+                        value={productFilters.preparation_status}
+                        style={selectStyle}
+                    >
+                        <option value="">Все</option>
+                        <option value="Готовый к употреблению">Готовый к употреблению</option>
+                        <option value="Полуфабрикат">Полуфабрикат</option>
+                        <option value="Требует приготовления">Требует приготовления</option>
+                    </select>
+                </div>
+            )}
+
             <div style={sectionStyle}>
                 <label style={labelStyle}>Флаги:</label>
                 <div style={checkboxGroupStyle}>

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -21,6 +23,7 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
+    "@playwright/test": "^1.54.2",
     "vite": "^5.0.8"
   }
 }

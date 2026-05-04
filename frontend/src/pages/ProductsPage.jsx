@@ -5,9 +5,11 @@ import Header from '../components/common/Header';
 import SearchBar from '../components/common/SearchBar';
 import FilterPanel from '../components/common/FilterPanel';
 import ProductCard from '../components/products/ProductCard';
+import { useNotification } from '../context/NotificationContext';
 
 const ProductsPage = () => {
     const { productFilters } = useFilters();
+    const { showNotification } = useNotification();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -33,28 +35,17 @@ const ProductsPage = () => {
     }, [productFilters]);
 
     const handleDelete = async (id) => {
-        if (window.confirm('Удалить продукт?')) {
-            try {
-                await deleteProduct(id);
-                fetchProducts();
-            } catch (err) {
-                alert(err.response?.data?.error || 'Ошибка удаления');
-            }
+        try {
+            await deleteProduct(id);
+            fetchProducts();
+            showNotification('Продукт удалён', 'success');
+        } catch (err) {
+            showNotification(err.response?.data?.error || 'Ошибка удаления');
         }
     };
 
-    const containerStyle = {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '20px',
-    };
-
-    const productsGridStyle = {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '20px',
-        marginTop: '20px',
-    };
+    const containerStyle = { maxWidth: '1200px', margin: '0 auto', padding: '20px' };
+    const productsGridStyle = { display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '20px' };
 
     if (loading) return <div style={containerStyle}>Загрузка...</div>;
     if (error) return <div style={containerStyle}>{error}</div>;
